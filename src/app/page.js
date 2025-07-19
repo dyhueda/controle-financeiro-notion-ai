@@ -27,7 +27,6 @@ export default function HomePage() {
       setPopUp(true);
     }
   };
-  console.log(popUp);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,7 +56,6 @@ export default function HomePage() {
     }
   };
 
-  console.log(data);
   return (
     <div className="max-w-screen p-4 gap-4 flex flex-col">
       <form>

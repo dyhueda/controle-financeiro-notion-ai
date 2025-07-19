@@ -2,33 +2,53 @@ import { IncomingForm } from "formidable";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import { Client } from "@notionhq/client";
+import path from "path";
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
+
 export const config = {
   api: {
     bodyParser: false,
   },
 };
-export default function handler(req, res) {
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Método não permitido" });
+  }
+
   const form = new IncomingForm({
     uploadDir: "./public/uploads",
     keepExtensions: true,
-    maxFileSize: 5 * 1024 * 1024,
-    });
+    maxFileSize: 5 * 1024 * 1024, // 5MB
+  });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      return res.status(500).json({ message: "Erro no upload" });
+      console.error("Erro ao fazer o upload:", err);
+      return res.status(500).json({ message: "Erro ao fazer upload do arquivo." });
     }
 
-    const filePath = files.image?.[0]?.filepath || files.image?.filepath;
+    const file = files.image?.[0] || files.image;
+    const filePath = file?.filepath;
+
+    if (!filePath) {
+      return res.status(400).json({ message: "Imagem não enviada." });
+    }
+
+    let json;
 
     try {
       const ai = new GoogleGenAI({});
-      const base64ImageFile = fs.readFileSync(filePath, {
-        encoding: "base64",
-      });
-      fs.unlinkSync(filePath);
+      const base64ImageFile = fs.readFileSync(filePath, { encoding: "base64" });
+
+      // Deletar imagem após leitura
+      try {
+        fs.unlinkSync(filePath);
+      } catch (e) {
+        console.warn("Erro ao apagar arquivo:", e);
+      }
+
       const contents = [
         {
           inlineData: {
@@ -40,84 +60,76 @@ export default function handler(req, res) {
           text: 'Take this image, create a json like this {"store_name": ,"purchase_date": "YYYY-MM-DD" ,"items":[{"name": ,"quantity": ,"price":, "price_per_item": }],"total":} all in english the value of total is always with tax',
         },
       ];
+
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: contents,
+        contents,
       });
-      let json = response.text;
-      const match = json.match(/{[\s\S]*}/);
-      if (match) {
-        const jsonStr = match[0];
-        const obj = JSON.parse(jsonStr);
-        json = obj;
-      } else {
-        console.log("JSON não encontrado.");
+
+      const match = response.text.match(/{[\s\S]*}/);
+
+      if (!match) {
+        console.error("Resposta da IA não contém JSON válido:", response.text);
+        return res.status(500).json({ message: "Erro ao interpretar resposta da IA." });
       }
-      console.log(json);
-      let ids = [];
+
+      json = JSON.parse(match[0]);
+
+    } catch (e) {
+      console.error("Erro ao processar imagem com IA:", e);
+      return res.status(500).json({ message: "Erro ao processar imagem com IA." });
+    }
+
+    try {
+      // Validação básica do JSON
+      if (!json.items || !Array.isArray(json.items) || json.items.length === 0) {
+        return res.status(400).json({ message: "Nenhum item encontrado no recibo." });
+      }
+
+      const itemIds = [];
+
       for (const item of json.items) {
-        const responseNotion = await notion.pages.create({
+        const createdPage = await notion.pages.create({
           parent: {
             database_id: process.env.NOTION_DATABASE_ID_ITENS,
           },
           properties: {
             Nome: {
-              title: [
-                {
-                  text: {
-                    content: item.name,
-                  },
-                },
-              ],
+              title: [{ text: { content: item.name || "Item sem nome" } }],
             },
-            "Valor Total": {
-              number: item.price,
-            },
-            "Valor por Item": {
-              number: item.price_per_item,
-            },
-            Quantidade: {
-              number: item.quantity
-            }
+            "Valor Total": { number: item.price || 0 },
+            "Valor por Item": { number: item.price_per_item || 0 },
+            Quantidade: { number: item.quantity || 1 },
           },
         });
-        ids.push(responseNotion.id);
+
+        itemIds.push(createdPage.id);
       }
-      const responseNotionDespesas = await notion.pages.create({
+
+      await notion.pages.create({
         parent: {
           database_id: process.env.NOTION_DATABASE_ID_DESPESAS,
         },
         properties: {
           Despesa: {
-            title: [
-              {
-                text: {
-                  content: json.store_name,
-                },
-              },
-            ],
+            title: [{ text: { content: json.store_name || "Sem Nome" } }],
           },
-          Valor: {
-            number: json.total,
-          },
-          Data: {
-            date: {
-              start: json.purchase_date,
-            },
-          },
+          Valor: { number: json.total || 0 },
+          Data: { date: { start: json.purchase_date || new Date().toISOString() } },
           Itens: {
-            relation: ids.map((id) => ({ id })),
+            relation: itemIds.map((id) => ({ id })),
           },
         },
       });
-      console.log(responseNotionDespesas)
-      res.status(200).json({
-        message: "Itens adicionados",
+
+      return res.status(200).json({
+        message: "Itens adicionados com sucesso.",
         result: json,
       });
+
     } catch (e) {
-      console.error(e);
-      res.status(500).json({ message: "Erro no processamento" });
-    } 
+      console.error("Erro ao salvar no Notion:", e);
+      return res.status(500).json({ message: "Erro ao salvar dados no Notion." });
+    }
   });
 }
