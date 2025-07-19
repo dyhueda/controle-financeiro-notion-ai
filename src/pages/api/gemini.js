@@ -41,8 +41,6 @@ export default async function handler(req, res) {
     try {
       const ai = new GoogleGenAI({});
       const base64ImageFile = fs.readFileSync(filePath, { encoding: "base64" });
-
-      // Deletar imagem após leitura
       try {
         fs.unlinkSync(filePath);
       } catch (e) {
@@ -57,7 +55,7 @@ export default async function handler(req, res) {
           },
         },
         {
-          text: 'Take this image, create a json like this {"store_name": ,"purchase_date": "YYYY-MM-DD" ,"items":[{"name": ,"quantity": ,"price":, "price_per_item": }],"total":} all in english the value of total is always with tax the year sometimes are YY or YYYY with this kanji 年 ',
+          text: 'Take this image, the date sometimes are YY年/MM月/DD日 or YYYY年/MM月/DD日 transform to YYYY-MM-DD translate to english and create a json like this {"store_name": ,"purchase_date": "YYYY-MM-DD" ,"items":[{"name": ,"quantity": ,"price":, "price_per_item": }],"total":}, the value of total is always with tax ',
         },
       ];
 
@@ -81,7 +79,6 @@ export default async function handler(req, res) {
     }
 
     try {
-      // Validação básica do JSON
       if (!json.items || !Array.isArray(json.items) || json.items.length === 0) {
         return res.status(400).json({ message: "Nenhum item encontrado no recibo." });
       }
