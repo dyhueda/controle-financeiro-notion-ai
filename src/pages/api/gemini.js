@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   const form = new IncomingForm({
-    uploadDir: "./public/uploads",
+    uploadDir: "/tmp",
     keepExtensions: true,
     maxFileSize: 5 * 1024 * 1024, // 5MB
   });
