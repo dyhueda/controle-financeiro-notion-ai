@@ -57,7 +57,7 @@ export default async function handler(req, res) {
           },
         },
         {
-          text: 'Take this image, create a json like this {"store_name": ,"purchase_date": "YYYY-MM-DD" ,"items":[{"name": ,"quantity": ,"price":, "price_per_item": }],"total":} all in english the value of total is always with tax',
+          text: 'Take this image, create a json like this {"store_name": ,"purchase_date": "YYYY-MM-DD" ,"items":[{"name": ,"quantity": ,"price":, "price_per_item": }],"total":} all in english the value of total is always with tax the year sometimes are YY or YYYY with this kanji 年 ',
         },
       ];
 
