@@ -96,8 +96,8 @@ export default async function handler(req, res) {
             },
             "Valor Total": { number: item.price || 0 },
             "Valor por Item": { number: item.price_per_item || 0 },
-            Data: { date: { start: dia || new Date().toISOString() } },
-            Quantidade: { number: item.quantity || 1 },
+            "Data": { date: { start: dia || new Date().toISOString() } },
+            "Qtde.": { number: item.quantity || 1 },
           },
         });
 
