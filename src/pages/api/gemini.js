@@ -55,7 +55,7 @@ export default async function handler(req, res) {
           },
         },
         {
-          text: 'Take this image, the date sometimes are YY年/MM月/DD日 or YYYY年/MM月/DD日 transform to YYYY-MM-DD translate to english and create a json like this {"store_name": ,"purchase_date": "YYYY-MM-DD" ,"items":[{"name": ,"quantity": ,"price":, "price_per_item": }],"total":}, the value of total is always with tax ',
+          text: 'Take this image, the date sometimes are YY年/MM月/DD日 or YYYY年/MM月/DD日 transform to YYYY-MM-DD TRANSLATE TO ENGLISH and create a json like this {"store_name": ,"purchase_date": "YYYY-MM-DD" ,"items":[{"name": ,"quantity": ,"price":, "price_per_item": }],"total":}, the value of total is always with tax ',
         },
       ];
 
